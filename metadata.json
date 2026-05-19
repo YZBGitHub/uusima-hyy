@@ -1,0 +1,8 @@
+{
+  "name": "NLECloud Dashboard Clone",
+  "description": "A clone of an IoT data simulation dashboard interface.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
