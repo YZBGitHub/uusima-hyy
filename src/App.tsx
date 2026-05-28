@@ -153,6 +153,8 @@ export default function App() {
 function DeviceManagementPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [uploadedData, setUploadedData] = useState<{name: string, key: string, desc: string}[] | null>(null);
+  const [importResult, setImportResult] = useState<{success: number, failed: number, errors: {key: string, reason: string}[]} | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,9 +171,25 @@ function DeviceManagementPage() {
   };
 
   const handleConfirmImport = () => {
+    setIsImporting(true);
     // Simulate submit result
+    setTimeout(() => {
+      setIsImporting(false);
+      setImportResult({
+         success: 2,
+         failed: 1,
+         errors: [
+            { key: 'SENS_BAL_02', reason: '设备Key已存在' }
+         ]
+      });
+    }, 1000);
+  };
+  
+  const resetModalState = () => {
     setShowImportModal(false);
     setUploadedData(null);
+    setImportResult(null);
+    setIsImporting(false);
   };
   
   return (
@@ -369,80 +387,134 @@ function DeviceManagementPage() {
       
       {/* Import Modal */}
       {showImportModal && (
-         <div className="fixed inset-0 bg-slate-900/40 flex flex-col items-center justify-center z-50">
+         <div className="fixed inset-0 bg-slate-900/40 flex flex-col items-center justify-center z-[80]">
             <div className="bg-white rounded-md shadow-xl w-[640px] flex flex-col max-h-[90vh]">
                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-base font-medium text-slate-800">导入设备</h3>
-                  <button onClick={() => {setShowImportModal(false); setUploadedData(null);}} className="text-slate-400 hover:text-slate-600 p-1">
+                  <button onClick={resetModalState} className="text-slate-400 hover:text-slate-600 p-1">
                     <X size={18} />
                   </button>
                </div>
                
                <div className="p-6 flex-1 overflow-y-auto w-full">
-                  <div className="mb-6 flex items-center gap-4 text-sm w-full">
-                     <label className="text-slate-700 w-24 text-right flex-shrink-0"><span className="text-red-500 mr-1">*</span>所属产品：</label>
-                     <div className="relative flex-1">
-                       <select className="w-full appearance-none border border-slate-300 rounded px-3 py-2 pr-8 text-slate-600 bg-white focus:outline-none focus:border-blue-500 hover:border-blue-400 cursor-pointer">
-                          <option>请选择目标产品</option>
-                          <option>智能落地扇</option>
-                          <option>温湿度传感器</option>
-                       </select>
-                       <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  {!importResult ? (
+                     <>
+                        <div className="mb-6 flex items-center gap-4 text-sm w-full">
+                           <label className="text-slate-700 w-24 text-right flex-shrink-0"><span className="text-red-500 mr-1">*</span>所属产品：</label>
+                           <div className="relative flex-1">
+                             <select className="w-full appearance-none border border-slate-300 rounded px-3 py-2 pr-8 text-slate-600 bg-white focus:outline-none focus:border-blue-500 hover:border-blue-400 cursor-pointer">
+                                <option>请选择目标产品</option>
+                                <option>智能落地扇</option>
+                                <option>温湿度传感器</option>
+                             </select>
+                             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                           </div>
+                        </div>
+                        
+                        <div className="mb-6 flex items-start gap-4 text-sm w-full">
+                           <label className="text-slate-700 w-24 text-right mt-1.5 flex-shrink-0"><span className="text-red-500 mr-1">*</span>上传文件：</label>
+                           <div className="flex-1">
+                              <input 
+                                 type="file" 
+                                 accept=".xlsx, .xls"
+                                 className="hidden" 
+                                 ref={fileInputRef}
+                                 onChange={handleFileUpload}
+                              />
+                              <button 
+                                 onClick={() => fileInputRef.current?.click()}
+                                 className="flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-500 bg-blue-50 rounded hover:bg-blue-100 transition-colors font-medium"
+                              >
+                                 <Upload size={16} />
+                                 选择Excel文件
+                              </button>
+                              <p className="text-xs text-slate-400 mt-2.5">只能上传xlsx/xls文件，且不超过5MB，如有疑问请先下载 <a href="#" className="text-blue-500 hover:underline">模板文件</a></p>
+                           </div>
+                        </div>
+                        
+                        {uploadedData && (
+                          <div className="mt-4 border border-slate-200 rounded text-sm w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                             <div className="bg-[#f0f2f5] px-4 py-2.5 border-b border-slate-200 font-medium text-slate-700 flex justify-between items-center">
+                               <span>预览数据</span>
+                               <span className="text-slate-500 font-normal">共解析 {uploadedData.length} 条</span>
+                             </div>
+                             <table className="w-full text-left table-fixed">
+                                <thead>
+                                   <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                      <th className="px-4 py-2.5 font-medium w-1/3">设备名称</th>
+                                      <th className="px-4 py-2.5 font-medium w-1/3">设备Key</th>
+                                      <th className="px-4 py-2.5 font-medium w-1/3">描述</th>
+                                   </tr>
+                                </thead>
+                                <tbody>
+                                   {uploadedData.map((row, i) => (
+                                      <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                         <td className="px-4 py-2.5 truncate">{row.name}</td>
+                                         <td className="px-4 py-2.5 text-slate-500 font-mono text-xs truncate">{row.key}</td>
+                                         <td className="px-4 py-2.5 text-slate-500 truncate">{row.desc}</td>
+                                      </tr>
+                                   ))}
+                                </tbody>
+                             </table>
+                          </div>
+                        )}
+                     </>
+                  ) : (
+                     <div className="flex flex-col items-center py-6 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                           <FileText size={32} className="text-blue-500" />
+                        </div>
+                        <h4 className="text-lg font-medium text-slate-800 mb-2">导入结果</h4>
+                        <div className="text-slate-600 mb-6 text-[15px]">
+                           共解析 {importResult.success + importResult.failed} 条数据，其中成功 <span className="text-[#20b36e] font-medium">{importResult.success}</span> 条，失败 <span className="text-red-500 font-medium">{importResult.failed}</span> 条。
+                        </div>
+
+                        {importResult.errors.length > 0 && (
+                           <div className="w-full border border-slate-200 rounded overflow-hidden text-sm max-w-lg mb-2">
+                              <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 font-medium text-slate-700 flex items-center gap-2">
+                                <XCircle size={16} className="text-red-500" />
+                                失败明细
+                              </div>
+                              <div className="max-h-[150px] overflow-y-auto">
+                                 <table className="w-full text-left">
+                                    <thead>
+                                       <tr className="bg-[#f8f9fa] text-slate-500 border-b border-slate-100">
+                                          <th className="px-4 py-2 font-normal">设备Key</th>
+                                          <th className="px-4 py-2 font-normal">失败原因</th>
+                                       </tr>
+                                    </thead>
+                                    <tbody>
+                                       {importResult.errors.map((err, i) => (
+                                          <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 text-slate-600">
+                                             <td className="px-4 py-2.5 font-mono text-[13px]">{err.key}</td>
+                                             <td className="px-4 py-2.5 text-red-500">{err.reason}</td>
+                                          </tr>
+                                       ))}
+                                    </tbody>
+                                 </table>
+                              </div>
+                           </div>
+                        )}
                      </div>
-                  </div>
-                  
-                  <div className="mb-6 flex items-start gap-4 text-sm w-full">
-                     <label className="text-slate-700 w-24 text-right mt-1.5 flex-shrink-0"><span className="text-red-500 mr-1">*</span>上传文件：</label>
-                     <div className="flex-1">
-                        <input 
-                           type="file" 
-                           accept=".xlsx, .xls"
-                           className="hidden" 
-                           ref={fileInputRef}
-                           onChange={handleFileUpload}
-                        />
-                        <button 
-                           onClick={() => fileInputRef.current?.click()}
-                           className="flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-500 bg-blue-50 rounded hover:bg-blue-100 transition-colors font-medium"
-                        >
-                           <Upload size={16} />
-                           选择Excel文件
-                        </button>
-                        <p className="text-xs text-slate-400 mt-2.5">只能上传xlsx/xls文件，且不超过5MB，如有疑问请先下载 <a href="#" className="text-blue-500 hover:underline">模板文件</a></p>
-                     </div>
-                  </div>
-                  
-                  {uploadedData && (
-                    <div className="mt-4 border border-slate-200 rounded text-sm w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
-                       <div className="bg-[#f0f2f5] px-4 py-2.5 border-b border-slate-200 font-medium text-slate-700 flex justify-between items-center">
-                         <span>预览数据</span>
-                         <span className="text-slate-500 font-normal">共解析 {uploadedData.length} 条</span>
-                       </div>
-                       <table className="w-full text-left table-fixed">
-                          <thead>
-                             <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                                <th className="px-4 py-2.5 font-medium w-1/3">设备名称</th>
-                                <th className="px-4 py-2.5 font-medium w-1/3">设备Key</th>
-                                <th className="px-4 py-2.5 font-medium w-1/3">描述</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {uploadedData.map((row, i) => (
-                                <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                                   <td className="px-4 py-2.5 truncate">{row.name}</td>
-                                   <td className="px-4 py-2.5 text-slate-500 font-mono text-xs truncate">{row.key}</td>
-                                   <td className="px-4 py-2.5 text-slate-500 truncate">{row.desc}</td>
-                                </tr>
-                             ))}
-                          </tbody>
-                       </table>
-                    </div>
                   )}
                </div>
                
                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-white rounded-b">
-                  <button onClick={() => {setShowImportModal(false); setUploadedData(null);}} className="px-5 py-1.5 border border-slate-300 rounded text-slate-600 hover:bg-slate-50 transition-colors font-medium">取消</button>
-                  <button onClick={handleConfirmImport} className={`px-5 py-1.5 rounded transition-colors shadow-sm font-medium ${uploadedData ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} disabled={!uploadedData}>确认导入</button>
+                  {!importResult ? (
+                     <>
+                        <button onClick={resetModalState} className="px-5 py-1.5 border border-slate-300 rounded text-slate-600 hover:bg-slate-50 transition-colors font-medium">取消</button>
+                        <button 
+                          onClick={handleConfirmImport} 
+                          className={`flex items-center gap-2 px-5 py-1.5 rounded transition-colors shadow-sm font-medium ${uploadedData ? 'bg-[#2d5ef8] text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`} 
+                          disabled={!uploadedData || isImporting}
+                        >
+                          {isImporting ? <RefreshCcw size={16} className="animate-spin" /> : null}
+                          {isImporting ? '导入中...' : '确认导入'}
+                        </button>
+                     </>
+                  ) : (
+                     <button onClick={resetModalState} className="px-5 py-1.5 bg-[#2d5ef8] text-white rounded hover:bg-blue-700 transition-colors shadow-sm font-medium">完成</button>
+                  )}
                </div>
             </div>
          </div>
@@ -463,6 +535,14 @@ function DataSimulationPage() {
   const [showDeviceInnerConfig, setShowDeviceInnerConfig] = useState(false);
   const [deviceConfigMode, setDeviceConfigMode] = useState<'config' | 'file'>('config');
   const [configPropTab, setConfigPropTab] = useState<'hum' | 'tem'>('hum');
+  const [isRefreshingLogs, setIsRefreshingLogs] = useState(false);
+
+  const handleRefreshLogs = () => {
+    setIsRefreshingLogs(true);
+    setTimeout(() => {
+      setIsRefreshingLogs(false);
+    }, 600);
+  };
 
   useEffect(() => {
     if ((modalType === 'import_progress' || modalType === 'export') && currentStep < 2) {
@@ -1035,8 +1115,16 @@ function DataSimulationPage() {
              </div>
              <div className="p-4 flex-1 overflow-auto bg-slate-50">
                <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden text-sm">
-                 <div className="px-4 py-3 border-b border-slate-100 flex justify-between bg-slate-50/50">
+                 <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <span className="text-slate-600 font-medium">最近50条执行记录</span>
+                    <button 
+                      onClick={handleRefreshLogs} 
+                      disabled={isRefreshingLogs}
+                      className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors text-[13px]"
+                    >
+                      <RefreshCcw size={14} className={isRefreshingLogs ? "animate-spin" : ""} />
+                      <span>刷新</span>
+                    </button>
                  </div>
                  <div className="max-h-[500px] overflow-y-auto">
                    <table className="w-full text-left">
